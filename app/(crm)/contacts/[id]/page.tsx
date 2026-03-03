@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { useState, useEffect } from 'react';
-
-
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { LogActivityModal } from '@/components/log-activity-modal';
+import Link from 'next/link';
 
 type Contact = {
   id: string;
@@ -130,17 +130,14 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
 
   const [contact, setContact] = useState<Contact | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
+  const [orgName, setOrgName] = useState<string | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Log activity form state
-  const [showLogForm, setShowLogForm] = useState(false);
-  const [actType, setActType] = useState('call');
-  const [actSubject, setActSubject] = useState('');
-  const [actBody, setActBody] = useState('');
-  const [actOutcome, setActOutcome] = useState('');
-  const [actDuration, setActDuration] = useState('');
-  const [actFollowUp, setActFollowUp] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [editingTags, setEditingTags] = useState(false);
+  const [newTag, setNewTag] = useState('');
 
   useEffect(() => {
     loadContact();
@@ -148,40 +145,37 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
 
   async function loadContact() {
     setLoading(true);
-    const [{ data: c }, { data: a }] = await Promise.all([
-        supabase.from('contacts').select('*').eq('id', id).single(),
-        supabase.from('activities').select('*').eq('contact_id', id)
-        .order('created_at', { ascending: false }).limit(50)
+    const [{ data: c }, { data: a }, { data: d }, { data: co }] = await Promise.all([
+      supabase.from('contacts').select('*').eq('id', id).single(),
+      supabase.from('activities').select('*').eq('contact_id', id)
+        .order('created_at', { ascending: false }).limit(50),
+      supabase.from('deals').select('id, title, stage, value, expected_close_date')
+        .eq('contact_id', id).order('created_at', { ascending: false }),
+      supabase.from('contact_organizations')
+        .select('organization:organizations(id, name)').eq('contact_id', id).limit(1),
     ]);
     setContact(c as Contact);
     setActivities((a as Activity[]) || []);
+    setDeals((d as any[]) || []);
+    const firstOrg = (co as any[])?.[0]?.organization;
+    setOrgName(firstOrg?.name || null);
+    setOrgId(firstOrg?.id || null);
     setLoading(false);
   }
 
-  async function logActivity() {
-    if (!actBody.trim()) return;
-    setSaving(true);
+  async function addTag(tag: string) {
+    const trimmed = tag.trim().toLowerCase().replace(/\s+/g, '_')
+    if (!trimmed || contact?.tags?.includes(trimmed)) return
+    const updatedTags = [...(contact?.tags || []), trimmed]
+    await supabase.from('contacts').update({ tags: updatedTags }).eq('id', id)
+    setNewTag('')
+    loadContact()
+  }
 
-    await supabase.from('activities').insert({
-        contact_id: id,
-      type: actType,
-      subject: actSubject || null,
-      body: actBody,
-      outcome: actOutcome || null,
-      duration_minutes: actDuration ? parseInt(actDuration) : null,
-      metadata: {}
-    });
-
-    // Update last_contacted_at
-    const updates: any = { last_contacted_at: new Date().toISOString() };
-    if (actFollowUp) updates.next_follow_up_at = actFollowUp;
-    await supabase.from('contacts').update(updates).eq('id', params.id);
-
-    setActType('call'); setActSubject(''); setActBody('');
-    setActOutcome(''); setActDuration(''); setActFollowUp('');
-    setShowLogForm(false);
-    setSaving(false);
-    loadContact();
+  async function removeTag(tag: string) {
+    const updatedTags = (contact?.tags || []).filter(t => t !== tag)
+    await supabase.from('contacts').update({ tags: updatedTags }).eq('id', id)
+    loadContact()
   }
 
   if (loading) {
@@ -378,18 +372,101 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* Tags */}
-          {contact.tags && contact.tags.length > 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tags</h3>
+              <button
+                onClick={() => setEditingTags(t => !t)}
+                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                {editingTags ? 'Done' : 'Edit'}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {(contact.tags || []).map(tag => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 text-xs bg-gray-800 text-gray-300 px-2.5 py-1 rounded-full"
+                >
+                  {tag.replace(/_/g, ' ')}
+                  {editingTags && (
+                    <button
+                      onClick={() => removeTag(tag)}
+                      className="text-gray-600 hover:text-red-400 transition-colors leading-none ml-0.5"
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              ))}
+              {editingTags && (
+                <form
+                  onSubmit={e => { e.preventDefault(); addTag(newTag) }}
+                  className="flex items-center gap-1"
+                >
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={e => setNewTag(e.target.value)}
+                    placeholder="Add tag..."
+                    className="text-xs bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-full px-2.5 py-1 w-24 focus:outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    type="submit"
+                    className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >
+                    +
+                  </button>
+                </form>
+              )}
+              {(contact.tags || []).length === 0 && !editingTags && (
+                <span className="text-xs text-gray-700">No tags yet</span>
+              )}
+            </div>
+          </div>
+
+          {/* Organization */}
+          {orgId && (
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Tags</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {contact.tags.map(tag => (
-                  <span key={tag} className="text-xs bg-gray-800 text-gray-300 px-2.5 py-1 rounded-full">
-                    {tag.replace(/_/g, ' ')}
-                  </span>
-                ))}
-              </div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Organization</h3>
+              <Link href={`/organizations/${orgId}`} className="text-sm font-medium text-white hover:text-indigo-300 transition-colors">
+                🏥 {orgName}
+              </Link>
             </div>
           )}
+
+          {/* Deals */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Deals</h3>
+              <Link href={`/deals/new?contact_id=${contact.id}`} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                + New
+              </Link>
+            </div>
+            {deals.length === 0 ? (
+              <p className="text-xs text-gray-700">No deals yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {deals.map(deal => (
+                  <Link
+                    key={deal.id}
+                    href={`/deals/${deal.id}`}
+                    className="flex items-center justify-between py-1.5 group"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-white group-hover:text-indigo-300 transition-colors truncate">
+                        {deal.title}
+                      </p>
+                      <p className="text-xs text-gray-600 capitalize">{deal.stage?.replace(/_/g, ' ')}</p>
+                    </div>
+                    <span className="text-xs text-emerald-400 shrink-0 ml-2">
+                      {deal.value ? `$${deal.value.toLocaleString()}` : '—'}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Notes */}
           {contact.notes && (
@@ -403,95 +480,20 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         {/* RIGHT COLUMN — Activity */}
         <div className="lg:col-span-2 space-y-5">
 
-          {/* Log Activity */}
-          {!showLogForm ? (
-            <button
-              onClick={() => setShowLogForm(true)}
-              className="w-full bg-gray-900 border border-gray-800 border-dashed rounded-xl p-4 text-sm text-gray-500 hover:text-white hover:border-gray-600 transition-colors"
-            >
-              + Log activity — call, email, meeting, note
-            </button>
-          ) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
-              <h3 className="text-sm font-semibold text-white">Log Activity</h3>
+          {/* Log Activity Button */}
+          <button
+            onClick={() => setShowLogModal(true)}
+            className="w-full bg-gray-900 border border-gray-800 border-dashed rounded-xl p-4 text-sm text-gray-500 hover:text-white hover:border-gray-600 transition-colors"
+          >
+            + Log activity — call, email, meeting, note
+          </button>
 
-              {/* Activity type buttons */}
-              <div className="flex gap-2 flex-wrap">
-                {['call', 'email_sent', 'meeting', 'note', 'sms_sent', 'follow_up', 'sample_sent', 'proposal_sent'].map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setActType(t)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                      actType === t
-                        ? 'bg-indigo-600 border-indigo-500 text-white'
-                        : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    {ACTIVITY_ICONS[t]} {t.replace(/_/g, ' ')}
-                  </button>
-                ))}
-              </div>
-
-              <input
-                type="text"
-                placeholder="Subject (optional)"
-                value={actSubject}
-                onChange={e => setActSubject(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-
-              <textarea
-                placeholder="Notes, outcome, next steps..."
-                value={actBody}
-                onChange={e => setActBody(e.target.value)}
-                rows={3}
-                className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-              />
-
-              <div className="grid grid-cols-3 gap-3">
-                {(actType === 'call' || actType === 'meeting') && (
-                  <input
-                    type="number"
-                    placeholder="Duration (mins)"
-                    value={actDuration}
-                    onChange={e => setActDuration(e.target.value)}
-                    className="bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                )}
-                <input
-                  type="text"
-                  placeholder="Outcome"
-                  value={actOutcome}
-                  onChange={e => setActOutcome(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Next follow-up</label>
-                  <input
-                    type="date"
-                    value={actFollowUp}
-                    onChange={e => setActFollowUp(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setShowLogForm(false)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={logActivity}
-                  disabled={saving || !actBody.trim()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  {saving ? 'Saving...' : 'Log Activity'}
-                </button>
-              </div>
-            </div>
+          {showLogModal && (
+            <LogActivityModal
+              contactId={id}
+              onClose={() => setShowLogModal(false)}
+              onSaved={() => { setShowLogModal(false); loadContact(); }}
+            />
           )}
 
           {/* Activity Timeline */}

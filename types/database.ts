@@ -156,6 +156,39 @@ export interface Activity {
   metadata: Json | null
 }
 
+export type DealStage =
+  | 'prospecting'
+  | 'qualification'
+  | 'proposal'
+  | 'negotiation'
+  | 'closed_won'
+  | 'closed_lost'
+
+export interface Deal {
+  id: string
+  created_at: string
+  updated_at: string
+  contact_id: string | null
+  organization_id: string | null
+  assigned_to: string | null
+  title: string
+  description: string | null
+  stage: DealStage
+  value: number | null
+  probability: number | null
+  currency: string | null
+  expected_close_date: string | null
+  actual_close_date: string | null
+  products_interest: string[] | null
+  lost_reason: string | null
+  notes: string | null
+  tags: string[] | null
+  custom_fields: Json | null
+}
+
+export type DealInsert = Omit<Deal, 'id' | 'created_at' | 'updated_at'>
+export type DealUpdate = Partial<DealInsert>
+
 export interface LeadEvent {
   id: string
   created_at: string
@@ -187,6 +220,11 @@ export interface Database {
         Row: LeadEvent
         Insert: Omit<LeadEvent, 'id' | 'created_at'>
         Update: Partial<Omit<LeadEvent, 'id' | 'created_at'>>
+      }
+      deals: {
+        Row: Deal
+        Insert: DealInsert
+        Update: DealUpdate
       }
     }
   }

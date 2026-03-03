@@ -32,18 +32,20 @@ export default async function CRMLayout({
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
           {[
-            { label: 'Dashboard',  href: '/dashboard' },
-            { label: 'Contacts',   href: '/contacts' },
-            { label: 'Pipelines',  href: '/pipelines' },
-            { label: 'Outreach',   href: '/outreach' },
-            { label: 'Analytics',  href: '/analytics' },
-            { label: 'Compliance', href: '/compliance' },
-          ].map(({ label, href }) => (
+            { label: 'Dashboard',     href: '/dashboard',     icon: '◼' },
+            { label: 'Contacts',      href: '/contacts',      icon: '👤' },
+            { label: 'Organizations', href: '/organizations', icon: '🏥' },
+            { label: 'Deals',         href: '/deals',         icon: '💼' },
+            { label: 'Pipeline',      href: '/pipelines',     icon: '📋' },
+            { label: 'Analytics',     href: '/analytics',     icon: '📊' },
+            { label: 'Compliance',    href: '/compliance',    icon: '✅' },
+          ].map(({ label, href, icon }) => (
             <Link
               key={href}
               href={href}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
             >
+              <span className="text-base leading-none">{icon}</span>
               {label}
             </Link>
           ))}
