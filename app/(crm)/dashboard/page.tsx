@@ -1,150 +1,114 @@
-import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
+import { createClient } from "@supabase/supabase-js";
+import Link from "next/link";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
+
+async function getStats() {
+  const { count: totalContacts } = await supabase
+    .from("contacts")
+    .select("*", { count: "exact", head: true });
+
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const { count: newLeads } = await supabase
+    .from("contacts")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", oneWeekAgo.toISOString());
+
+  const { count: pendingWholesale } = await supabase
+    .from("contacts")
+    .select("*", { count: "exact", head: true })
+    .eq("contact_type", "wholesale")
+    .eq("lead_status", "pending");
+
+  return {
+    totalContacts: totalContacts || 0,
+    newLeads: newLeads || 0,
+    pendingWholesale: pendingWholesale || 0,
+  };
+}
+
+const quickActions = [
+  { label: "Add Contact", href: "/contacts/new" },
+  { label: "New Wholesale App", href: "/wholesale/new" },
+  { label: "Add Patient", href: "/patients/new" },
+  { label: "View Pipeline", href: "/pipeline" },
+];
+
+const statCards = [
+  { label: "Total Contacts", key: "totalContacts" },
+  { label: "New Leads This Week", key: "newLeads" },
+  { label: "Pending Wholesale", key: "pendingWholesale" },
+  { label: "Pipeline Value", key: "pipeline" },
+];
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
+  const stats = await getStats();
 
-  const now = new Date()
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-  const [total, newLeads, hotLeads, overdueCount] = await Promise.all([
-    supabase.from('contacts').select('id', { count: 'exact', head: true }),
-    supabase.from('contacts').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
-    supabase.from('contacts').select('id', { count: 'exact', head: true }).gte('lead_score', 70),
-    supabase.from('contacts').select('id', { count: 'exact', head: true })
-      .lt('next_follow_up_at', now.toISOString())
-      .not('next_follow_up_at', 'is', null),
-  ])
-
-  const [{ data: topContacts }, { data: overdueContacts }] = await Promise.all([
-    supabase
-      .from('contacts')
-      .select('id, first_name, last_name, practice_name, lead_score, estimated_monthly_value, lead_status')
-      .order('lead_score', { ascending: false })
-      .limit(5),
-    supabase
-      .from('contacts')
-      .select('id, first_name, last_name, practice_name, lead_score, next_follow_up_at, lead_status')
-      .lt('next_follow_up_at', now.toISOString())
-      .not('next_follow_up_at', 'is', null)
-      .not('lead_status', 'in', '("closed_won","closed_lost","do_not_contact")')
-      .order('lead_score', { ascending: false })
-      .limit(8),
-  ])
-
-  const stats = [
-    { label: 'Total Contacts',    value: total.count || 0,       color: 'from-indigo-500 to-indigo-600',  href: '/contacts' },
-    { label: 'New This Week',     value: newLeads.count || 0,    color: 'from-emerald-500 to-emerald-600', href: '/contacts' },
-    { label: 'Hot Leads',         value: hotLeads.count || 0,    color: 'from-orange-500 to-orange-600',  href: '/contacts' },
-    { label: 'Overdue Follow-ups',value: overdueCount.count || 0, color: 'from-red-500 to-red-600',       href: '/contacts' },
-  ]
-
-  function formatRelative(dateStr: string) {
-    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
-    if (days === 0) return 'Today'
-    if (days === 1) return 'Yesterday'
-    if (days < 7) return `${days}d ago`
-    return `${Math.floor(days / 7)}w ago`
-  }
-
-  function scoreColor(score: number) {
-    if (score >= 70) return 'text-emerald-400'
-    if (score >= 45) return 'text-amber-400'
-    return 'text-blue-400'
-  }
+  const values: Record<string, string | number> = {
+    totalContacts: stats.totalContacts,
+    newLeads: stats.newLeads,
+    pendingWholesale: stats.pendingWholesale,
+    pipeline: "$0",
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* Header */}
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          {now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        <h2 className="text-2xl font-bold text-white">Dashboard</h2>
+        <p className="text-slate-400 text-sm mt-1">
+          Welcome back, Benn. Here is your ExaVeyra CRM overview.
         </p>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map(({ label, value, color, href }) => (
-          <Link key={label} href={href} className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors">
-            <div className={`inline-flex w-8 h-8 rounded-lg bg-gradient-to-br ${color} mb-3`} />
-            <p className="text-2xl font-bold text-white">{value}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-          </Link>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card) => (
+          <div
+            key={card.key}
+            className="bg-slate-900 border border-slate-800 rounded-xl p-5"
+          >
+            <p className="text-slate-400 text-sm">{card.label}</p>
+            <p className="text-3xl font-bold text-white mt-2">
+              {values[card.key]}
+            </p>
+          </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Follow-up Queue */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl">
-          <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-white">Overdue Follow-ups</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Sorted by lead score</p>
-            </div>
-            {(overdueCount.count || 0) > 0 && (
-              <span className="text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded-full font-medium">
-                {overdueCount.count} overdue
-              </span>
-            )}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <h3 className="text-white font-semibold mb-4">Recent Activity</h3>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 text-sm">
+            <div className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
+            <span className="text-slate-400">CRM initialized — ready for contacts</span>
+            <span className="text-slate-600 ml-auto">Today</span>
           </div>
-          <div className="divide-y divide-gray-800">
-            {!overdueContacts || overdueContacts.length === 0 ? (
-              <div className="px-5 py-8 text-center">
-                <p className="text-2xl mb-2">✅</p>
-                <p className="text-sm text-gray-500">All caught up!</p>
-                <p className="text-xs text-gray-700 mt-1">No overdue follow-ups.</p>
-              </div>
-            ) : (
-              overdueContacts.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/contacts/${c.id}`}
-                  className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-800/50 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
-                      {c.first_name} {c.last_name}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">{c.practice_name || '—'}</p>
-                  </div>
-                  <div className="text-right shrink-0 ml-3">
-                    <p className={`text-sm font-bold ${scoreColor(c.lead_score)}`}>{c.lead_score}</p>
-                    <p className="text-xs text-red-400">{formatRelative(c.next_follow_up_at!)}</p>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Top Contacts by Lead Score */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl">
-          <div className="px-5 py-4 border-b border-gray-800">
-            <h2 className="text-sm font-semibold text-white">Top Contacts by Lead Score</h2>
-          </div>
-          <div className="divide-y divide-gray-800">
-            {topContacts?.map((c) => (
-              <Link
-                key={c.id}
-                href={`/contacts/${c.id}`}
-                className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-800/50 transition-colors"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{c.first_name} {c.last_name}</p>
-                  <p className="text-xs text-gray-500 truncate">{c.practice_name || '—'}</p>
-                </div>
-                <div className="text-right shrink-0 ml-3">
-                  <p className="text-sm font-medium text-emerald-400">
-                    {c.estimated_monthly_value ? `$${c.estimated_monthly_value.toLocaleString()}/mo` : '—'}
-                  </p>
-                  <p className={`text-xs font-bold ${scoreColor(c.lead_score)}`}>Score {c.lead_score}</p>
-                </div>
-              </Link>
-            ))}
+          <div className="flex items-center gap-3 text-sm">
+            <div className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+            <span className="text-slate-400">Admin account created</span>
+            <span className="text-slate-600 ml-auto">Today</span>
           </div>
         </div>
       </div>
+
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <h3 className="text-white font-semibold mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {quickActions.map((action) => (
+            <Link
+              key={action.label}
+              href={action.href}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm text-center rounded-lg px-4 py-3 transition"
+            >
+              {action.label}
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
-  )
+  );
 }
