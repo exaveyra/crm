@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { LogActivityModal } from '@/components/log-activity-modal';
+import AssigneePicker from '@/components/assignee-picker';
 import Link from 'next/link';
 
 type Contact = {
@@ -41,6 +42,7 @@ type Contact = {
   notes: string;
   last_contacted_at: string;
   next_follow_up_at: string;
+  assigned_to: string | null;
   created_at: string;
 };
 
@@ -369,6 +371,22 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
                 <span className="text-white">{formatRelative(contact.last_contacted_at)}</span>
               </div>
             </div>
+          </div>
+
+          {/* Assigned To */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Assigned To</h3>
+            <AssigneePicker
+              currentAssigneeId={contact.assigned_to}
+              onAssign={async (userId) => {
+                await fetch(`/api/contacts/${contact.id}/assign`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ assigned_to: userId }),
+                });
+                loadContact();
+              }}
+            />
           </div>
 
           {/* Tags */}
