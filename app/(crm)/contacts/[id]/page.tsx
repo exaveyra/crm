@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 
 type Contact = {
   id: string;
@@ -113,19 +114,15 @@ export default function ContactDetailPage() {
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/contacts" className="text-slate-400 hover:text-white transition">
-            ←
-          </Link>
-          <div>
-            <h2 className="text-2xl font-bold text-white">
-              {contact.first_name} {contact.last_name}
-            </h2>
-            <p className="text-slate-400 text-sm mt-1">
-              {contact.practice_name || contact.contact_type}
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title={`${contact.first_name} ${contact.last_name}`}
+          subtitle={contact.practice_name || contact.contact_type}
+          action={
+            <Link href="/contacts" className="text-slate-400 hover:text-white text-sm transition">
+              ← Back
+            </Link>
+          }
+        />
         <div className="flex items-center gap-3">
           <span className={`text-xs px-3 py-1 rounded-full border ${statusColor[contact.lead_status] || "bg-slate-500/10 text-slate-400 border-slate-500/20"}`}>
             {contact.lead_status}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 
 export default function NewContactPage() {
   const router = useRouter();
@@ -60,15 +61,15 @@ export default function NewContactPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/contacts" className="text-slate-400 hover:text-white transition">
-          ← Back
-        </Link>
-        <div>
-          <h2 className="text-2xl font-bold text-white">Add Contact</h2>
-          <p className="text-slate-400 text-sm mt-1">Create a new lead or client record</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Add Contact"
+        subtitle="Create a new lead or client record"
+        action={
+          <Link href="/contacts" className="text-slate-400 hover:text-white text-sm transition">
+            ← Back
+          </Link>
+        }
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
 

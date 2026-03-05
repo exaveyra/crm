@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { PageHeader } from '@/components/page-header'
 
 const STAGE_COLORS: Record<string, string> = {
   prospecting:   'bg-gray-500/10 text-gray-400 border-gray-700',
@@ -30,23 +31,18 @@ export default async function DealsPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Deals</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {openDeals.length} open deals ·{' '}
-            <span className="text-emerald-400">${pipelineValue.toLocaleString()} pipeline</span>{' '}
-            · <span className="text-amber-400">${Math.round(weightedValue).toLocaleString()} weighted</span>
-          </p>
-        </div>
-        <Link
-          href="/deals/new"
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
-        >
-          + New Deal
-        </Link>
-      </div>
+      <PageHeader
+        title="Deals"
+        subtitle={`${openDeals.length} open · $${pipelineValue.toLocaleString()} pipeline · $${Math.round(weightedValue).toLocaleString()} weighted`}
+        action={
+          <Link
+            href="/deals/new"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            + New Deal
+          </Link>
+        }
+      />
 
       {/* Deals Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">

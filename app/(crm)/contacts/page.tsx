@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 
 type Contact = {
   id: string;
@@ -62,20 +63,18 @@ export default function ContactsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-white">Contacts</h2>
-          <p className="text-slate-400 text-sm mt-1">
-            Manage all leads, clients, and practitioners
-          </p>
-        </div>
-        <Link
-          href="/contacts/new"
-          className="bg-teal-500 hover:bg-teal-400 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition"
-        >
-          + Add Contact
-        </Link>
-      </div>
+      <PageHeader
+        title="Contacts"
+        subtitle="Manage all leads, clients, and practitioners"
+        action={
+          <Link
+            href="/contacts/new"
+            className="bg-teal-500 hover:bg-teal-400 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition"
+          >
+            + Add Contact
+          </Link>
+        }
+      />
 
       <div className="flex flex-col sm:flex-row gap-3">
         <input

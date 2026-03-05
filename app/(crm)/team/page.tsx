@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { PageHeader } from '@/components/page-header';
 
 type Profile = {
   id: string;
@@ -104,21 +105,18 @@ export default function TeamPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Team</h1>
-          <p className="text-gray-500 text-sm mt-0.5">
-            {activeCount} active member{activeCount !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <button
-          onClick={() => { setShowInvite(true); setInviteSuccess(''); setInviteError(''); }}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          + Invite Member
-        </button>
-      </div>
+      <PageHeader
+        title="Team"
+        subtitle={`${activeCount} active member${activeCount !== 1 ? 's' : ''}`}
+        action={
+          <button
+            onClick={() => { setShowInvite(true); setInviteSuccess(''); setInviteError(''); }}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            + Invite Member
+          </button>
+        }
+      />
 
       {/* Invite Form */}
       {showInvite && (

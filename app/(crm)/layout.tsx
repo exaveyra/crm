@@ -11,7 +11,7 @@ const navItems = [
   { label: "Wholesale", href: "/wholesale", icon: "🏥" },
   { label: "Patients", href: "/patients", icon: "🧬" },
   { label: "Pipeline", href: "/pipelines", icon: "📊" },
-    { label: "Settings", href: "/settings", icon: "⚙️" },
+  { label: "Settings", href: "/settings", icon: "⚙️" },
 ];
 
 export default function CRMLayout({ children }: { children: React.ReactNode }) {
@@ -32,13 +32,23 @@ export default function CRMLayout({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside className={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-800 z-30 transform transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        
+
         {/* Logo */}
-        <div className="p-6 border-b border-slate-800">
-          <h1 className="text-xl font-bold text-teal-400 tracking-widest uppercase">
-            ExaVeyra
-          </h1>
-          <p className="text-slate-500 text-xs mt-1">CRM Portal</p>
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.jpg"
+            alt="ExaVeyra"
+            width={36}
+            height={36}
+            className="rounded-lg shrink-0 object-cover"
+          />
+          <div>
+            <h1 className="text-sm font-bold text-white tracking-widest uppercase leading-tight">
+              ExaVeyra
+            </h1>
+            <p className="text-slate-500 text-xs">CRM Portal</p>
+          </div>
         </div>
 
         {/* Nav */}
@@ -92,14 +102,28 @@ export default function CRMLayout({ children }: { children: React.ReactNode }) {
 
         {/* Top header */}
         <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 sticky top-0 z-10">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden text-slate-400 hover:text-white"
-          >
-            ☰
-          </button>
-          <div className="text-white font-medium capitalize">
-            {pathname.split("/").pop() || "Dashboard"}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden text-slate-400 hover:text-white mr-1"
+            >
+              ☰
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.jpg"
+              alt="ExaVeyra"
+              width={28}
+              height={28}
+              className="rounded-md shrink-0 object-cover"
+            />
+            <span className="text-white font-semibold text-sm tracking-wide hidden sm:inline">
+              ExaVeyra
+            </span>
+            <span className="text-slate-600 hidden sm:inline">/</span>
+            <span className="text-slate-400 text-sm capitalize">
+              {pathname.split("/").filter(Boolean).pop() || "Dashboard"}
+            </span>
           </div>
           <div className="text-slate-400 text-sm">
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { PageHeader } from '@/components/page-header'
 
 const ORG_TYPES = [
   'solo_practice', 'group_practice', 'medspa', 'hospital',
@@ -86,13 +87,18 @@ export default function NewOrganizationPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => router.push('/organizations')}
-          className="text-gray-500 hover:text-white transition-colors text-sm"
-        >
-          ← Back
-        </button>
-        <h1 className="text-2xl font-semibold text-white">New Organization</h1>
+        <PageHeader
+          title="New Organization"
+          subtitle="Add a clinic, practice, or partner"
+          action={
+            <button
+              onClick={() => router.push('/organizations')}
+              className="text-gray-500 hover:text-white transition-colors text-sm"
+            >
+              ← Back
+            </button>
+          }
+        />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">

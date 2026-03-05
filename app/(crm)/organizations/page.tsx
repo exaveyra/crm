@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { PageHeader } from '@/components/page-header'
 
 interface Organization {
   id: string
@@ -46,19 +47,18 @@ export default function OrganizationsPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Organizations</h1>
-          <p className="text-gray-500 text-sm mt-1">Clinics, practices, and partner organizations</p>
-        </div>
-        <Link
-          href="/organizations/new"
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
-        >
-          + Add Organization
-        </Link>
-      </div>
+      <PageHeader
+        title="Organizations"
+        subtitle="Clinics, practices, and partner organizations"
+        action={
+          <Link
+            href="/organizations/new"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            + Add Organization
+          </Link>
+        }
+      />
 
       {/* Search */}
       <div className="relative">

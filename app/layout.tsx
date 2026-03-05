@@ -16,6 +16,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ExaVeyra CRM",
   description: "ExaVeyra internal CRM portal",
+  icons: {
+    icon: "/logo-real.png",
+    apple: "/logo-real.png",
+  },
 };
 
 export default function RootLayout({

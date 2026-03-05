@@ -58,11 +58,26 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white">Dashboard</h2>
-        <p className="text-slate-400 text-sm mt-1">
-          Welcome back, Benn. Here is your ExaVeyra CRM overview.
-        </p>
+
+      {/* Branded hero banner */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-2xl px-6 py-5 flex items-center gap-5">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 via-blue-500/5 to-transparent pointer-events-none" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo.jpg"
+          alt="ExaVeyra"
+          width={52}
+          height={52}
+          className="rounded-xl shrink-0 object-cover"
+        />
+        <div>
+          <h1 className="text-xl font-bold text-white tracking-wide">
+            ExaVeyra CRM
+          </h1>
+          <p className="text-slate-400 text-sm mt-0.5">
+            Welcome back, Benn. Here is your CRM overview.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

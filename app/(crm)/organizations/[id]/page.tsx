@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { PageHeader } from '@/components/page-header'
 
 interface Organization {
   id: string
@@ -131,22 +132,23 @@ export default function OrganizationDetailPage({
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/organizations')} className="text-gray-500 hover:text-white transition-colors text-sm">← Back</button>
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
-            <span className="text-white text-lg font-bold">{org.name.slice(0, 2).toUpperCase()}</span>
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-white">{org.name}</h1>
-            <p className="text-sm text-gray-400 mt-0.5 capitalize">{org.type?.replace(/_/g, ' ') || 'Organization'}</p>
-          </div>
-        </div>
-        <Link
-          href={`/deals/new?org_id=${id}&org_name=${encodeURIComponent(org.name)}`}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
-        >
-          + New Deal
-        </Link>
+        <PageHeader
+          title={org.name}
+          subtitle={org.type?.replace(/_/g, ' ') || 'Organization'}
+          action={
+            <div className="flex items-center gap-3">
+              <button onClick={() => router.push('/organizations')} className="text-gray-500 hover:text-white transition-colors text-sm">
+                ← Back
+              </button>
+              <Link
+                href={`/deals/new?org_id=${id}&org_name=${encodeURIComponent(org.name)}`}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
+              >
+                + New Deal
+              </Link>
+            </div>
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

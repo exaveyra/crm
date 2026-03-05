@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogActivityModal } from '@/components/log-activity-modal'
+import { PageHeader } from '@/components/page-header'
 
 const STAGES = ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost']
 
@@ -129,24 +130,15 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/deals')} className="text-gray-500 hover:text-white text-sm">← Back</button>
-          <div>
-            <h1 className="text-2xl font-semibold text-white">{deal.title}</h1>
-            <div className="flex items-center gap-3 mt-1.5">
-              <span className={`text-xs px-2.5 py-1 rounded-full border capitalize ${STAGE_COLORS[deal.stage]}`}>
-                {deal.stage.replace(/_/g, ' ')}
-              </span>
-              {deal.value && (
-                <span className="text-emerald-400 font-semibold">${deal.value.toLocaleString()}</span>
-              )}
-              <span className="text-xs text-gray-500">{deal.probability}% probability</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={deal.title}
+        subtitle={`${deal.stage.replace(/_/g, ' ')} · ${deal.value ? `$${deal.value.toLocaleString()}` : 'No value'} · ${deal.probability}% probability`}
+        action={
+          <button onClick={() => router.push('/deals')} className="text-gray-500 hover:text-white text-sm transition-colors">
+            ← Back
+          </button>
+        }
+      />
 
       {/* Stage Progress Bar */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">

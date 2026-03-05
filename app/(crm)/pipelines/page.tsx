@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { PageHeader } from '@/components/page-header'
 
 type LeadStatus =
   | 'new' | 'contacted' | 'qualified' | 'proposal'
@@ -199,22 +200,18 @@ export default function PipelinesPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Pipeline</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {contacts.length} active contacts ·{' '}
-            <span className="text-emerald-400">${totalPipelineValue.toLocaleString()}/mo pipeline value</span>
-          </p>
-        </div>
-        <Link
-          href="/contacts/new"
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
-        >
-          + Add Contact
-        </Link>
-      </div>
+      <PageHeader
+        title="Pipeline"
+        subtitle={`${contacts.length} active contacts · $${totalPipelineValue.toLocaleString()}/mo pipeline value`}
+        action={
+          <Link
+            href="/contacts/new"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            + Add Contact
+          </Link>
+        }
+      />
 
       {/* Kanban Board */}
       <div className="flex gap-4 overflow-x-auto pb-4">

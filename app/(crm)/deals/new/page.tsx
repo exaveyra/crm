@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Suspense } from 'react'
+import { PageHeader } from '@/components/page-header'
 
 const STAGES = [
   { value: 'prospecting',   label: 'Prospecting' },
@@ -105,10 +106,15 @@ function NewDealForm() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="text-gray-500 hover:text-white transition-colors text-sm">← Back</button>
-        <h1 className="text-2xl font-semibold text-white">New Deal</h1>
-      </div>
+      <PageHeader
+        title="New Deal"
+        subtitle="Create a new sales opportunity"
+        action={
+          <button onClick={() => router.back()} className="text-gray-500 hover:text-white transition-colors text-sm">
+            ← Back
+          </button>
+        }
+      />
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Core */}

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { PageHeader } from '@/components/page-header';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN',
@@ -174,19 +175,18 @@ export default function EditContactPage({ params }: { params: Promise<{ id: stri
           >
             ← Back
           </button>
-          <div>
-            <h1 className="text-2xl font-semibold text-white">Edit Contact</h1>
-            <p className="text-gray-500 text-sm mt-0.5">
-              {form.first_name} {form.last_name}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={handleDelete}
-          className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium rounded-lg transition-colors"
-        >
-          🗑 Delete Contact
-        </button>
+        <PageHeader
+          title="Edit Contact"
+          subtitle={`${form.first_name} ${form.last_name}`}
+          action={
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium rounded-lg transition-colors"
+            >
+              🗑 Delete Contact
+            </button>
+          }
+        />
       </div>
 
       {error && (
