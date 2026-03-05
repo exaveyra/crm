@@ -10,8 +10,8 @@ const navItems = [
   { label: "Contacts", href: "/contacts", icon: "👥" },
   { label: "Wholesale", href: "/wholesale", icon: "🏥" },
   { label: "Patients", href: "/patients", icon: "🧬" },
-  { label: "Pipeline", href: "/pipeline", icon: "📊" },
-  { label: "Settings", href: "/settings", icon: "⚙️" },
+  { label: "Pipeline", href: "/pipelines", icon: "📊" },
+    { label: "Settings", href: "/settings", icon: "⚙️" },
 ];
 
 export default function CRMLayout({ children }: { children: React.ReactNode }) {
