@@ -25,7 +25,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data, error } = await supabase
     .from("activities")
-    .insert([{ ...body, contact_id: id }])
+    .insert([{
+      contact_id: id,
+      type: body.type || "note",
+      subject: body.content,
+      body: body.content,
+    }])
     .select()
     .single();
 

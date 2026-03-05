@@ -204,8 +204,7 @@ export default function ContactDetailPage() {
                   <div key={activity.id} className="flex gap-3">
                     <div className="w-2 h-2 rounded-full bg-teal-400 mt-1.5 shrink-0" />
                     <div>
-                      <p className="text-slate-300 text-sm">{activity.content}</p>
-                      <p className="text-slate-500 text-xs mt-0.5">
+                    <p className="text-slate-300 text-sm">{activity.body || activity.subject}</p>                      <p className="text-slate-500 text-xs mt-0.5">
                         {new Date(activity.created_at).toLocaleString()}
                       </p>
                     </div>
