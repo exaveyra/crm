@@ -1,386 +1,322 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-
-const US_STATES = [
-  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN',
-  'IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV',
-  'NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN',
-  'TX','UT','VT','VA','WA','WV','WI','WY','DC'
-];
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function NewContactPage() {
   const router = useRouter();
-  const supabase = createClient();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [npiChecking, setNpiChecking] = useState(false);
-  const [npiResult, setNpiResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    mobile: '',
-    contact_type: 'prospect',
-    specialty: '',
-    practice_name: '',
-    practice_type: '',
-    num_providers: '',
-    npi_number: '',
-    dea_number: '',
-    address_line1: '',
-    city: '',
-    state: 'FL',
-    zip: '',
-    lead_source: '',
-    lead_status: 'new',
-    estimated_monthly_value: '',
-    notes: '',
-    tags: '',
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    mobile: "",
+    contact_type: "prospect",    
+    lead_status: "lead",
+    practice_name: "",
+    specialty: "",
+    npi_number: "",
+    address_line1: "",
+    city: "",
+    state: "",
+    zip: "",
+    lead_source: "",
+    notes: "",
+    hipaa_consent: false,
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const target = e.target as HTMLInputElement;
+    const value = target.type === "checkbox" ? target.checked : target.value;
+    setForm((prev) => ({ ...prev, [target.name]: value }));
   }
 
-  async function verifyNPI() {
-    if (!form.npi_number || form.npi_number.length !== 10) {
-      setNpiResult({ error: 'NPI must be 10 digits' });
-      return;
-    }
-    setNpiChecking(true);
-    setNpiResult(null);
-    try {
-      const res = await fetch(
-        `https://npiregistry.cms.hhs.gov/api/?number=${form.npi_number}&version=2.1`
-      );
-      const data = await res.json();
-      if (data.result_count === 0) {
-        setNpiResult({ error: 'NPI not found in registry' });
-      } else {
-        const p = data.results[0];
-        setNpiResult({
-          valid: true,
-          name: `${p.basic.first_name} ${p.basic.last_name}`,
-          credential: p.basic.credential,
-          specialty: p.taxonomies?.[0]?.desc,
-          state: p.addresses?.[0]?.state,
-          status: p.basic.status
-        });
-        // Auto-fill specialty if empty
-        if (!form.specialty && p.taxonomies?.[0]?.desc) {
-          setForm(prev => ({ ...prev, specialty: p.taxonomies[0].desc }));
-        }
-      }
-    } catch {
-      setNpiResult({ error: 'NPI lookup failed — check connection' });
-    }
-    setNpiChecking(false);
-  }
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-  async function handleSubmit() {
-    if (!form.first_name.trim() || !form.last_name.trim()) {
-      setError('First and last name are required.');
-      return;
-    }
-    setSaving(true);
-    setError('');
-
-    const payload: any = {
-      ...form,
-      num_providers: form.num_providers ? parseInt(form.num_providers) : null,
-      estimated_monthly_value: form.estimated_monthly_value ? parseFloat(form.estimated_monthly_value) : null,
-      tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-      npi_verified: npiResult?.valid === true,
-      npi_verified_at: npiResult?.valid === true ? new Date().toISOString() : null,
-      lead_score: 0,
-      actual_lifetime_value: 0,
-      hipaa_consent: false,
-      dnc_flag: false,
-      state_compliance_verified: false,
-      custom_fields: {},
-      country: 'US',
-    };
-
-    // Clean empty strings to null
-    Object.keys(payload).forEach(k => {
-      if (payload[k] === '') payload[k] = null;
+    const res = await fetch("/api/contacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
     });
 
-    const { data, error: insertError } = await supabase
-      .from('contacts')
-      .insert(payload)
-      .select()
-      .single();
+    const data = await res.json();
 
-    if (insertError) {
-      setError(insertError.message);
-      setSaving(false);
-      return;
+    if (!res.ok) {
+      setError(data.error || "Failed to create contact.");
+      setLoading(false);
+    } else {
+      router.push(`/contacts/${data.contact.id}`);
     }
-
-    router.push(`/contacts/${data.id}`);
   }
 
+  const isWholesale = ["prescriber", "clinic_admin", "regenerative_md", "aesthetics_md"].includes(form.contact_type);
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-
-      {/* Header */}
+    <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => router.push('/contacts')}
-          className="text-gray-500 hover:text-white transition-colors text-sm"
-        >
+        <Link href="/contacts" className="text-slate-400 hover:text-white transition">
           ← Back
-        </button>
+        </Link>
         <div>
-          <h1 className="text-2xl font-semibold text-white">Add Contact</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Add a new practitioner, lead, or patient</p>
+          <h2 className="text-2xl font-bold text-white">Add Contact</h2>
+          <p className="text-slate-400 text-sm mt-1">Create a new lead or client record</p>
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg">
-          {error}
-        </div>
-      )}
+      <form onSubmit={handleSubmit} className="space-y-6">
 
-      {/* Section: Basic Info */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-white">Basic Information</h2>
+    {/* Contact Type */}
+<div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+  <h3 className="text-white font-semibold">Contact Type</h3>
+  <select
+    name="contact_type"
+    value={form.contact_type}
+    onChange={handleChange}
+    className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+  >
+    <option value="prospect">Prospect</option>
+    <option value="prescriber">Prescriber</option>
+    <option value="clinic_admin">Clinic Admin</option>
+    <option value="regenerative_md">Regenerative MD</option>
+    <option value="aesthetics_md">Aesthetics MD</option>
+    <option value="patient">Patient</option>
+    <option value="vendor">Vendor</option>
+    <option value="referral_partner">Referral Partner</option>
+  </select>
+</div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">First Name *</label>
-            <input name="first_name" value={form.first_name} onChange={handleChange}
-              placeholder="Dr. Maria"
-              className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Last Name *</label>
-            <input name="last_name" value={form.last_name} onChange={handleChange}
-              placeholder="Rodriguez"
-              className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Email</label>
-            <input name="email" type="email" value={form.email} onChange={handleChange}
-              placeholder="doctor@clinic.com"
-              className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Phone</label>
-            <input name="phone" value={form.phone} onChange={handleChange}
-              placeholder="(305) 555-0100"
-              className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Contact Type</label>
-            <select name="contact_type" value={form.contact_type} onChange={handleChange}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="prospect">Prospect</option>
-              <option value="prescriber">Prescriber</option>
-              <option value="regenerative_md">Regenerative MD</option>
-              <option value="aesthetics_md">Aesthetics MD</option>
-              <option value="clinic_admin">Clinic Admin</option>
-              <option value="patient">Patient</option>
-              <option value="vendor">Vendor</option>
-              <option value="referral_partner">Referral Partner</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Lead Status</label>
-            <select name="lead_status" value={form.lead_status} onChange={handleChange}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="qualified">Qualified</option>
-              <option value="proposal">Proposal</option>
-              <option value="negotiation">Negotiation</option>
-              <option value="closed_won">Closed Won</option>
-              <option value="nurture">Nurture</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Lead Source</label>
-            <select name="lead_source" value={form.lead_source} onChange={handleChange}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="">Select source</option>
-              <option value="website_form">Website Form</option>
-              <option value="referral">Referral</option>
-              <option value="cold_outreach">Cold Outreach</option>
-              <option value="conference">Conference</option>
-              <option value="linkedin">LinkedIn</option>
-              <option value="google_ads">Google Ads</option>
-              <option value="organic_search">Organic Search</option>
-              <option value="email_campaign">Email Campaign</option>
-              <option value="existing_customer">Existing Customer</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Est. Monthly Value ($)</label>
-            <input name="estimated_monthly_value" type="number" value={form.estimated_monthly_value} onChange={handleChange}
-              placeholder="5000"
-              className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-        </div>
-      </div>
-
-      {/* Section: Practice Info */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-white">Practice Information</h2>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Practice Name</label>
-            <input name="practice_name" value={form.practice_name} onChange={handleChange}
-              placeholder="South Florida Wellness Center"
-              className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Practice Type</label>
-            <select name="practice_type" value={form.practice_type} onChange={handleChange}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="">Select type</option>
-              <option value="solo_practice">Solo Practice</option>
-              <option value="group_practice">Group Practice</option>
-              <option value="medspa">Med Spa</option>
-              <option value="hospital">Hospital</option>
-              <option value="wellness_center">Wellness Center</option>
-              <option value="functional_medicine">Functional Medicine</option>
-              <option value="anti_aging">Anti-Aging</option>
-              <option value="orthopedics">Orthopedics</option>
-              <option value="sports_medicine">Sports Medicine</option>
-              <option value="urgent_care">Urgent Care</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Specialty</label>
-            <input name="specialty" value={form.specialty} onChange={handleChange}
-              placeholder="Functional Medicine"
-              className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Number of Providers</label>
-            <input name="num_providers" type="number" value={form.num_providers} onChange={handleChange}
-              placeholder="3"
-              className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2">
-            <label className="text-xs text-gray-500 mb-1.5 block">City</label>
-            <input name="city" value={form.city} onChange={handleChange}
-              placeholder="Miami"
-              className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">State</label>
-            <select name="state" value={form.state} onChange={handleChange}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Section: NPI Verification */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-white">Credentials & Compliance</h2>
-
-        <div>
-          <label className="text-xs text-gray-500 mb-1.5 block">NPI Number</label>
-          <div className="flex gap-3">
-            <input name="npi_number" value={form.npi_number} onChange={handleChange}
-              placeholder="10-digit NPI"
-              maxLength={10}
-              className="flex-1 bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <button
-              onClick={verifyNPI}
-              disabled={npiChecking || form.npi_number.length !== 10}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
-            >
-              {npiChecking ? 'Checking...' : 'Verify NPI'}
-            </button>
-          </div>
-
-          {/* NPI Result */}
-          {npiResult && (
-            <div className={`mt-3 px-4 py-3 rounded-lg text-sm ${npiResult.valid ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}>
-              {npiResult.valid ? (
-                <div className="space-y-1">
-                  <p className="font-medium">✓ NPI Verified — {npiResult.name} {npiResult.credential}</p>
-                  <p className="text-xs opacity-80">{npiResult.specialty} · Licensed in {npiResult.state} · Status: {npiResult.status === 'A' ? 'Active' : npiResult.status}</p>
-                </div>
-              ) : (
-                <p>✗ {npiResult.error}</p>
-              )}
+        {/* Basic Info */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+          <h3 className="text-white font-semibold">Basic Information</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">First Name *</label>
+              <input
+                name="first_name"
+                value={form.first_name}
+                onChange={handleChange}
+                required
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              />
             </div>
-          )}
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">Last Name *</label>
+              <input
+                name="last_name"
+                value={form.last_name}
+                onChange={handleChange}
+                required
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-slate-400 text-sm mb-1.5">Email</label>
+            <input
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">Phone</label>
+              <input
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">Mobile</label>
+              <input
+                name="mobile"
+                value={form.mobile}
+                onChange={handleChange}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              />
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label className="text-xs text-gray-500 mb-1.5 block">DEA Number</label>
-          <input name="dea_number" value={form.dea_number} onChange={handleChange}
-            placeholder="For 503A controlled substance discussions"
-            className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        {/* Wholesale Fields */}
+        {isWholesale && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+            <h3 className="text-white font-semibold">Practice Information</h3>
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">Practice Name</label>
+              <input
+                name="practice_name"
+                value={form.practice_name}
+                onChange={handleChange}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-400 text-sm mb-1.5">Specialty</label>
+                <input
+                  name="specialty"
+                  value={form.specialty}
+                  onChange={handleChange}
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-sm mb-1.5">NPI Number</label>
+                <input
+                  name="npi_number"
+                  value={form.npi_number}
+                  onChange={handleChange}
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Location */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+          <h3 className="text-white font-semibold">Location</h3>
+          <div>
+            <label className="block text-slate-400 text-sm mb-1.5">Address</label>
+            <input
+              name="address_line1"
+              value={form.address_line1}
+              onChange={handleChange}
+              className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">City</label>
+              <input
+                name="city"
+                value={form.city}
+                onChange={handleChange}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">State</label>
+              <input
+                name="state"
+                value={form.state}
+                onChange={handleChange}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">ZIP</label>
+              <input
+                name="zip"
+                value={form.zip}
+                onChange={handleChange}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              />
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Section: Tags & Notes */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-white">Tags & Notes</h2>
-
-        <div>
-          <label className="text-xs text-gray-500 mb-1.5 block">Tags <span className="text-gray-600">(comma separated)</span></label>
-          <input name="tags" value={form.tags} onChange={handleChange}
-            placeholder="exosome_interest, 503a_interest, high_value"
-            className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        {/* Lead Info */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+          <h3 className="text-white font-semibold">Lead Information</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">Status</label>
+              <select
+                name="lead_status"
+                value={form.lead_status}
+                onChange={handleChange}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              >
+                <option value="lead">Lead</option>
+                <option value="qualified">Qualified</option>
+                <option value="proposal">Proposal</option>
+                <option value="client">Client</option>
+                <option value="pending">Pending</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-400 text-sm mb-1.5">Lead Source</label>
+              <select
+                name="lead_source"
+                value={form.lead_source}
+                onChange={handleChange}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+              >
+                <option value="">Select source</option>
+                <option value="website">Website</option>
+                <option value="referral">Referral</option>
+                <option value="google">Google</option>
+                <option value="social">Social Media</option>
+                <option value="conference">Conference</option>
+                <option value="cold_outreach">Cold Outreach</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-slate-400 text-sm mb-1.5">Notes</label>
+            <textarea
+              name="notes"
+              value={form.notes}
+              onChange={handleChange}
+              rows={3}
+              className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition resize-none"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="text-xs text-gray-500 mb-1.5 block">Notes</label>
-          <textarea name="notes" value={form.notes} onChange={handleChange}
-            placeholder="Any relevant context about this contact..."
-            rows={3}
-            className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+        {/* HIPAA Consent */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              name="hipaa_consent"
+              checked={form.hipaa_consent}
+              onChange={handleChange}
+              className="mt-0.5 accent-teal-500"
+            />
+            <span className="text-slate-400 text-sm">
+              Patient/client has provided HIPAA consent for data collection and storage.
+            </span>
+          </label>
         </div>
-      </div>
 
-      {/* Submit */}
-      <div className="flex items-center justify-between pb-8">
-        <button
-          onClick={() => router.push('/contacts')}
-          className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={saving}
-          className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-        >
-          {saving ? 'Saving...' : 'Create Contact'}
-        </button>
-      </div>
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white font-semibold rounded-lg py-3 text-sm transition"
+          >
+            {loading ? "Saving..." : "Save Contact"}
+          </button>
+          <Link
+            href="/contacts"
+            className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition text-center"
+          >
+            Cancel
+          </Link>
+        </div>
+      </form>
     </div>
   );
 }

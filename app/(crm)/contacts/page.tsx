@@ -1,8 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import Link from "next/link";
 
 type Contact = {
   id: string;
@@ -11,348 +10,175 @@ type Contact = {
   email: string;
   phone: string;
   contact_type: string;
-  specialty: string;
+  lead_status: string;
   practice_name: string;
   city: string;
   state: string;
-  lead_status: string;
-  lead_score: number;
-  npi_verified: boolean;
-  estimated_monthly_value: number;
-  last_contacted_at: string;
-  next_follow_up_at: string;
-  tags: string[];
+  created_at: string;
 };
-
-const TYPE_COLORS: Record<string, string> = {
-  regenerative_md:  'bg-violet-500/20 text-violet-300',
-  aesthetics_md:    'bg-pink-500/20 text-pink-300',
-  prescriber:       'bg-blue-500/20 text-blue-300',
-  clinic_admin:     'bg-cyan-500/20 text-cyan-300',
-  patient:          'bg-green-500/20 text-green-300',
-  prospect:         'bg-gray-500/20 text-gray-400',
-  vendor:           'bg-orange-500/20 text-orange-300',
-  referral_partner: 'bg-yellow-500/20 text-yellow-300',
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  new:            'bg-sky-500/20 text-sky-300',
-  contacted:      'bg-blue-500/20 text-blue-300',
-  qualified:      'bg-indigo-500/20 text-indigo-300',
-  proposal:       'bg-purple-500/20 text-purple-300',
-  negotiation:    'bg-amber-500/20 text-amber-300',
-  closed_won:     'bg-emerald-500/20 text-emerald-300',
-  closed_lost:    'bg-red-500/20 text-red-300',
-  nurture:        'bg-teal-500/20 text-teal-300',
-  do_not_contact: 'bg-gray-500/20 text-gray-500',
-};
-
-function ScoreBadge({ score }: { score: number }) {
-  const color = score >= 70
-    ? 'bg-emerald-500/20 text-emerald-300'
-    : score >= 45
-    ? 'bg-amber-500/20 text-amber-300'
-    : 'bg-gray-500/20 text-gray-400';
-  const label = score >= 70 ? 'HOT' : score >= 45 ? 'WARM' : 'COLD';
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold ${color}`}>
-      {score} <span className="font-normal opacity-70">{label}</span>
-    </span>
-  );
-}
-
-function formatCurrency(val?: number) {
-  if (!val) return '—';
-  return `$${val.toLocaleString()}`;
-}
-
-function formatRelative(dateStr?: string) {
-  if (!dateStr) return '—';
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
-  if (diff < 7) return `${diff}d ago`;
-  if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function isOverdue(dateStr?: string) {
-  if (!dateStr) return false;
-  return new Date(dateStr) < new Date();
-}
 
 export default function ContactsPage() {
-  const router = useRouter();
-  const supabase = createClient();
-
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [overdueOnly, setOverdueOnly] = useState(false);
-  const [sortBy, setSortBy] = useState('lead_score');
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 25;
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     fetchContacts();
-  }, [search, typeFilter, statusFilter, overdueOnly, sortBy, page]);
+  }, [typeFilter, statusFilter]);
 
   async function fetchContacts() {
     setLoading(true);
+    const params = new URLSearchParams();
+    if (typeFilter !== "all") params.set("type", typeFilter);
+    if (statusFilter !== "all") params.set("status", statusFilter);
 
-    let query = supabase
-      .from('contacts')
-      .select('*', { count: 'exact' })
-      .eq('dnc_flag', false);
-
-    if (search.trim()) {
-      query = query.or(
-        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,practice_name.ilike.%${search}%,npi_number.ilike.%${search}%`
-      );
-    }
-    if (typeFilter !== 'all') query = query.eq('contact_type', typeFilter);
-    if (statusFilter !== 'all') query = query.eq('lead_status', statusFilter);
-    if (overdueOnly) query = query.lt('next_follow_up_at', new Date().toISOString()).not('next_follow_up_at', 'is', null);
-
-    query = query
-      .order(sortBy, { ascending: sortBy === 'next_follow_up_at' })
-      .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-
-    const { data, count } = await query;
-    setContacts((data as Contact[]) || []);
-    setTotal(count || 0);
+    const res = await fetch(`/api/contacts?${params.toString()}`);
+    const data = await res.json();
+    setContacts(data.contacts || []);
     setLoading(false);
   }
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const filtered = contacts.filter((c) => {
+    const name = `${c.first_name} ${c.last_name}`.toLowerCase();
+    return name.includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase());
+  });
+
+  const statusColor: Record<string, string> = {
+    lead: "bg-blue-500/10 text-blue-400",
+    qualified: "bg-teal-500/10 text-teal-400",
+    proposal: "bg-purple-500/10 text-purple-400",
+    client: "bg-green-500/10 text-green-400",
+    inactive: "bg-slate-500/10 text-slate-400",
+    pending: "bg-amber-500/10 text-amber-400",
+  };
+
+  const typeColor: Record<string, string> = {
+    wholesale: "bg-purple-500/10 text-purple-400",
+    consumer: "bg-blue-500/10 text-blue-400",
+    concierge: "bg-teal-500/10 text-teal-400",
+  };
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Contacts</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{total} total</p>
+          <h2 className="text-2xl font-bold text-white">Contacts</h2>
+          <p className="text-slate-400 text-sm mt-1">
+            Manage all leads, clients, and practitioners
+          </p>
         </div>
-        <button
-          onClick={() => router.push('/contacts/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+        <Link
+          href="/contacts/new"
+          className="bg-teal-500 hover:bg-teal-400 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition"
         >
           + Add Contact
-        </button>
+        </Link>
       </div>
 
-      {/* Filters */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-wrap gap-3">
-        {/* Search */}
-        <div className="flex-1 min-w-60 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
-          <input
-            type="text"
-            placeholder="Search name, email, practice, NPI..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-lg pl-8 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-
-        {/* Type filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <input
+          type="text"
+          placeholder="Search by name or email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 bg-slate-900 border border-slate-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
+        />
         <select
           value={typeFilter}
-          onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
-          className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
         >
           <option value="all">All Types</option>
-          <option value="regenerative_md">Regenerative MD</option>
-          <option value="prescriber">Prescriber</option>
-          <option value="aesthetics_md">Aesthetics MD</option>
-          <option value="clinic_admin">Clinic Admin</option>
-          <option value="patient">Patient</option>
-          <option value="prospect">Prospect</option>
-          <option value="vendor">Vendor</option>
+          <option value="wholesale">Wholesale</option>
+          <option value="consumer">Consumer</option>
+          <option value="concierge">Concierge</option>
         </select>
-
-        {/* Status filter */}
         <select
           value={statusFilter}
-          onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 transition"
         >
           <option value="all">All Statuses</option>
-          <option value="new">New</option>
-          <option value="contacted">Contacted</option>
+          <option value="lead">Lead</option>
           <option value="qualified">Qualified</option>
           <option value="proposal">Proposal</option>
-          <option value="negotiation">Negotiation</option>
-          <option value="closed_won">Closed Won</option>
-          <option value="nurture">Nurture</option>
+          <option value="client">Client</option>
+          <option value="pending">Pending</option>
+          <option value="inactive">Inactive</option>
         </select>
-
-        {/* Sort */}
-        <select
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value)}
-          className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="lead_score">Highest Score</option>
-          <option value="created_at">Newest First</option>
-          <option value="estimated_monthly_value">Highest Value</option>
-          <option value="last_contacted_at">Recently Contacted</option>
-          <option value="next_follow_up_at">Follow-up Due</option>
-        </select>
-
-        {/* Overdue toggle */}
-        <button
-          onClick={() => { setOverdueOnly(!overdueOnly); setPage(1); }}
-          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-            overdueOnly
-              ? 'bg-red-500/20 border-red-500/40 text-red-400'
-              : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
-          }`}
-        >
-          ⚠ Overdue Only
-        </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-slate-500">Loading contacts...</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center">
+            <p className="text-slate-500 text-sm">No contacts found.</p>
+            <Link
+              href="/contacts/new"
+              className="text-teal-400 text-sm mt-2 inline-block hover:underline"
+            >
+              Add your first contact
+            </Link>
+          </div>
+        ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-800">
-                {['Contact', 'Type', 'Practice', 'Status', 'Score', 'Value/mo', 'Last Contact', 'Follow-up'].map(col => (
-                  <th key={col} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    {col}
-                  </th>
-                ))}
+              <tr className="border-b border-slate-800">
+                <th className="text-left text-slate-400 text-xs font-medium px-6 py-3">Name</th>
+                <th className="text-left text-slate-400 text-xs font-medium px-6 py-3 hidden sm:table-cell">Type</th>
+                <th className="text-left text-slate-400 text-xs font-medium px-6 py-3 hidden md:table-cell">Status</th>
+                <th className="text-left text-slate-400 text-xs font-medium px-6 py-3 hidden lg:table-cell">Practice</th>
+                <th className="text-left text-slate-400 text-xs font-medium px-6 py-3 hidden lg:table-cell">Location</th>
+                <th className="text-left text-slate-400 text-xs font-medium px-6 py-3 hidden xl:table-cell">Added</th>
+                <th className="px-6 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
-              {loading && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-500 text-sm">
-                    Loading contacts...
-                  </td>
-                </tr>
-              )}
-              {!loading && contacts.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-600 text-sm">
-                    No contacts found.{' '}
-                    <button onClick={() => router.push('/contacts/new')} className="text-indigo-400 hover:underline">
-                      Add your first contact
-                    </button>
-                  </td>
-                </tr>
-              )}
-              {!loading && contacts.map(c => (
+            <tbody>
+              {filtered.map((contact, i) => (
                 <tr
-                  key={c.id}
-                  onClick={() => router.push(`/contacts/${c.id}`)}
-                  className="hover:bg-gray-800/60 cursor-pointer transition-colors"
+                  key={contact.id}
+                  className={`border-b border-slate-800/50 hover:bg-slate-800/30 transition ${i % 2 === 0 ? "" : "bg-slate-800/10"}`}
                 >
-                  {/* Name */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
-                        <span className="text-white text-xs font-semibold">
-                          {c.first_name?.[0]}{c.last_name?.[0]}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white whitespace-nowrap">
-                          {c.first_name} {c.last_name}
-                          {c.npi_verified && (
-                            <span className="ml-1.5 text-emerald-400 text-xs">✓</span>
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-500">{c.email || '—'}</p>
-                      </div>
+                  <td className="px-6 py-4">
+                    <div className="text-white text-sm font-medium">
+                      {contact.first_name} {contact.last_name}
                     </div>
+                    <div className="text-slate-500 text-xs mt-0.5">{contact.email}</div>
                   </td>
-
-                  {/* Type */}
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex text-xs font-medium px-2 py-1 rounded-full ${TYPE_COLORS[c.contact_type] || 'bg-gray-500/20 text-gray-400'}`}>
-                      {c.contact_type?.replace(/_/g, ' ')}
+                  <td className="px-6 py-4 hidden sm:table-cell">
+                    <span className={`text-xs px-2 py-1 rounded-full ${typeColor[contact.contact_type] || "bg-slate-500/10 text-slate-400"}`}>
+                      {contact.contact_type}
                     </span>
                   </td>
-
-                  {/* Practice */}
-                  <td className="px-4 py-3">
-                    <p className="text-sm text-gray-300 whitespace-nowrap">{c.practice_name || '—'}</p>
-                    <p className="text-xs text-gray-600">{c.city}{c.state ? `, ${c.state}` : ''}</p>
-                  </td>
-
-                  {/* Status */}
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[c.lead_status] || 'bg-gray-500/20 text-gray-400'}`}>
-                      {c.lead_status?.replace(/_/g, ' ')}
+                  <td className="px-6 py-4 hidden md:table-cell">
+                    <span className={`text-xs px-2 py-1 rounded-full ${statusColor[contact.lead_status] || "bg-slate-500/10 text-slate-400"}`}>
+                      {contact.lead_status}
                     </span>
                   </td>
-
-                  {/* Score */}
-                  <td className="px-4 py-3">
-                    <ScoreBadge score={c.lead_score} />
+                  <td className="px-6 py-4 hidden lg:table-cell text-slate-400 text-sm">
+                    {contact.practice_name || "—"}
                   </td>
-
-                  {/* Value */}
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-emerald-400 font-medium">
-                      {formatCurrency(c.estimated_monthly_value)}
-                    </span>
+                  <td className="px-6 py-4 hidden lg:table-cell text-slate-400 text-sm">
+                    {contact.city && contact.state ? `${contact.city}, ${contact.state}` : "—"}
                   </td>
-
-                  {/* Last Contact */}
-                  <td className="px-4 py-3">
-                    <span className="text-xs text-gray-400">
-                      {formatRelative(c.last_contacted_at)}
-                    </span>
+                  <td className="px-6 py-4 hidden xl:table-cell text-slate-500 text-xs">
+                    {new Date(contact.created_at).toLocaleDateString()}
                   </td>
-
-                  {/* Follow-up */}
-                  <td className="px-4 py-3">
-                    {c.next_follow_up_at ? (
-                      <span className={`text-xs font-medium ${isOverdue(c.next_follow_up_at) ? 'text-red-400' : 'text-gray-400'}`}>
-                        {isOverdue(c.next_follow_up_at) ? '⚠ ' : ''}{formatRelative(c.next_follow_up_at)}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-700">—</span>
-                    )}
+                  <td className="px-6 py-4 text-right">
+                    <Link
+                      href={`/contacts/${contact.id}`}
+                      className="text-teal-400 hover:text-teal-300 text-xs transition"
+                    >
+                      View →
+                    </Link>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-800 flex items-center justify-between">
-            <p className="text-xs text-gray-500">
-              Showing {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                ← Prev
-              </button>
-              <span className="text-xs text-gray-500">{page} / {totalPages}</span>
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                Next →
-              </button>
-            </div>
-          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 
 type Profile = {
@@ -22,8 +21,12 @@ export default function AssigneePicker({ currentAssigneeId, onAssign, size = 'md
 
   useEffect(() => {
     fetch('/api/team')
-      .then(r => r.json())
-      .then(data => setTeam(Array.isArray(data) ? data.filter((p: Profile) => p.is_active) : []));
+      .then(r => {
+        if (!r.ok) return [];
+        return r.json();
+      })
+      .then(data => setTeam(Array.isArray(data) ? data.filter((p: Profile) => p.is_active) : []))
+      .catch(() => setTeam([]));
   }, []);
 
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
