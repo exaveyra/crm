@@ -177,7 +177,7 @@ export default function PipelinesPage() {
     setContacts(prev =>
       prev.map(c => c.id === contactId ? { ...c, lead_status: newStatus } : c)
     )
-    await supabase
+    await (supabase as any)
       .from('contacts')
       .update({ lead_status: newStatus })
       .eq('id', contactId)

@@ -1,47 +1,50 @@
-import { createClient } from "@supabase/supabase-js";
-import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from '@/lib/supabase/admin'
+import { NextRequest, NextResponse } from 'next/server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
-
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = createAdminClient()
 
   const { data: contact, error } = await supabase
-    .from("contacts")
-    .select("*")
-    .eq("id", id)
-    .single();
+    .from('contacts')
+    .select('*')
+    .eq('id', id)
+    .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
-  return NextResponse.json({ contact });
+  if (error) return NextResponse.json({ error: error.message }, { status: 404 })
+  return NextResponse.json({ contact })
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const body = await req.json();
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = createAdminClient()
+  const body = await req.json()
 
-  const { data: contact, error } = await supabase
-    .from("contacts")
+  const { data: contact, error } = await (supabase as any)
+    .from('contacts')
     .update(body)
-    .eq("id", id)
+    .eq('id', id)
     .select()
-    .single();
+    .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ contact });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ contact })
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = createAdminClient()
 
-  const { error } = await supabase
-    .from("contacts")
-    .delete()
-    .eq("id", id);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
+  const { error } = await supabase.from('contacts').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
 }

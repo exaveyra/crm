@@ -1,34 +1,36 @@
-import { createClient } from "@supabase/supabase-js";
-import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from '@/lib/supabase/admin'
+import { NextRequest, NextResponse } from 'next/server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+export async function GET(req: NextRequest) {
+  const supabase = createAdminClient()
+  const { searchParams } = req.nextUrl
+  const contactId = searchParams.get('contact_id')
+  const dealId = searchParams.get('deal_id')
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  let query = (supabase as any)
+    .from('activities')
+    .select('*')
+    .order('created_at', { ascending: false })
 
-  const { data, error } = await supabase
-    .from("activities")
-    .select("*")
-    .eq("contact_id", id)
-    .order("created_at", { ascending: false });
+  if (contactId) query = query.eq('contact_id', contactId)
+  if (dealId) query = query.eq('deal_id', dealId)
 
-  if (error) return NextResponse.json({ activities: [] });
-  return NextResponse.json({ activities: data });
+  const { data, error } = await query
+
+  if (error) return NextResponse.json({ activities: [] })
+  return NextResponse.json({ activities: data })
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const body = await req.json();
+export async function POST(req: NextRequest) {
+  const supabase = createAdminClient()
+  const body = await req.json()
 
-  const { data, error } = await supabase
-    .from("activities")
-    .insert([{ ...body, contact_id: id }])
+  const { data, error } = await (supabase as any)
+    .from('activities')
+    .insert([body])
     .select()
-    .single();
+    .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ activity: data });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ activity: data })
 }

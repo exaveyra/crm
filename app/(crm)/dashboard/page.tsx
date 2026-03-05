@@ -1,12 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
-
 async function getStats() {
+  const supabase = createAdminClient()
   const { count: totalContacts } = await supabase
     .from("contacts")
     .select("*", { count: "exact", head: true });
@@ -14,10 +10,10 @@ async function getStats() {
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-  const { count: newLeads } = await supabase
+  const { count: newLeads } = await (supabase as any)
     .from("contacts")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", oneWeekAgo.toISOString());
+    .gte("created_at", oneWeekAgo.toISOString())
 
   const { count: pendingWholesale } = await supabase
     .from("contacts")

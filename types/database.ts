@@ -105,6 +105,7 @@ export interface Contact {
   actual_lifetime_value: number | null
   tags: string[] | null
   assigned_to: string | null
+  assigned_at: string | null
   last_contacted_at: string | null
   next_follow_up_at: string | null
   notes: string | null
@@ -198,6 +199,22 @@ export interface LeadEvent {
   metadata: Json | null
 }
 
+export interface Profile {
+  id: string
+  created_at: string
+  email: string | null
+  full_name: string | null
+  role: string | null
+  is_active: boolean | null
+  avatar_url: string | null
+}
+
+export interface ContactOrganization {
+  contact_id: string
+  organization_id: string
+  created_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -225,6 +242,16 @@ export interface Database {
         Row: Deal
         Insert: DealInsert
         Update: DealUpdate
+      }
+      profiles: {
+        Row: Profile
+        Insert: Omit<Profile, 'id' | 'created_at'>
+        Update: Partial<Omit<Profile, 'id' | 'created_at'>>
+      }
+      contact_organizations: {
+        Row: ContactOrganization
+        Insert: Omit<ContactOrganization, 'created_at'>
+        Update: Partial<Omit<ContactOrganization, 'created_at'>>
       }
     }
   }

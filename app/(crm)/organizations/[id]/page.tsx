@@ -71,16 +71,16 @@ export default function OrganizationDetailPage({
         .eq('organization_id', id),
       supabase.from('deals').select('id, title, stage, value, expected_close_date').eq('organization_id', id),
     ])
-    setOrg(o as Organization)
+    setOrg(o as unknown as Organization)
     setContacts((co?.map((r: any) => r.contact) as Contact[]) || [])
-    setDeals((d as Deal[]) || [])
+    setDeals((d as unknown as Deal[]) || [])
     setLoading(false)
   }
 
   async function linkContact(e: React.FormEvent) {
     e.preventDefault()
     setLinkError('')
-    const { data: c } = await supabase
+    const { data: c } = await (supabase as any)
       .from('contacts')
       .select('id')
       .eq('email', linkEmail.trim())
@@ -88,7 +88,7 @@ export default function OrganizationDetailPage({
 
     if (!c) { setLinkError('No contact found with that email.'); return }
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('contact_organizations')
       .upsert({ contact_id: c.id, organization_id: id })
 

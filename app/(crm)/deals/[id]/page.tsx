@@ -97,19 +97,19 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
         .order('created_at', { ascending: false })
         .limit(50),
     ])
-    setDeal(d as Deal)
-    setActivities((a as Activity[]) || [])
+    setDeal(d as unknown as Deal)
+    setActivities((a as unknown as Activity[]) || [])
     setLoading(false)
   }
 
   async function moveStage(newStage: string) {
     setUpdatingStage(true)
-    await supabase.from('deals').update({ stage: newStage }).eq('id', id)
+    await (supabase as any).from('deals').update({ stage: newStage }).eq('id', id)
     // Log stage change activity
-    if (deal?.contact_id) {
-      await supabase.from('activities').insert({
+    if (deal?.contact?.id) {
+      await (supabase as any).from('activities').insert({
         deal_id: id,
-        contact_id: (deal as any).contact_id,
+        contact_id: deal.contact.id,
         type: 'stage_change',
         subject: `Stage moved to ${newStage.replace(/_/g, ' ')}`,
       })

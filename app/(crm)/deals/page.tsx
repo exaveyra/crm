@@ -14,7 +14,7 @@ const STAGE_COLORS: Record<string, string> = {
 export default async function DealsPage() {
   const supabase = await createClient()
 
-  const { data: deals } = await supabase
+  const { data: rawDeals } = await supabase
     .from('deals')
     .select(`
       id, title, stage, value, probability, expected_close_date, created_at,
@@ -22,6 +22,7 @@ export default async function DealsPage() {
       organization:organizations(id, name)
     `)
     .order('created_at', { ascending: false })
+  const deals = rawDeals as any[] | null
 
   const openDeals = (deals || []).filter(d => !['closed_won', 'closed_lost'].includes(d.stage))
   const pipelineValue = openDeals.reduce((sum, d) => sum + (d.value || 0), 0)
